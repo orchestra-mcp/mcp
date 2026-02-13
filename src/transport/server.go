@@ -67,7 +67,7 @@ func (s *MCPServer) handleRequest(req *types.JSONRPCRequest) {
 	case "initialize":
 		s.writeResult(req.ID, types.InitializeResult{
 			ProtocolVersion: "2024-11-05",
-			Capabilities:    types.ServerCaps{Tools: map[string]any{}},
+			Capabilities:    types.ServerCaps{Tools: &types.ToolsCap{}},
 			ServerInfo:      types.ServerInfo{Name: s.name, Version: s.version},
 		})
 	case "notifications/initialized":

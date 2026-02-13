@@ -39,7 +39,12 @@ type InitializeResult struct {
 
 // ServerCaps declares server capabilities.
 type ServerCaps struct {
-	Tools map[string]any `json:"tools,omitempty"`
+	Tools *ToolsCap `json:"tools,omitempty"`
+}
+
+// ToolsCap advertises tool support.
+type ToolsCap struct {
+	ListChanged bool `json:"listChanged,omitempty"`
 }
 
 // ServerInfo identifies the server.
