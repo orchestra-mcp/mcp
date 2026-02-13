@@ -15,17 +15,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The plugin's go.mod uses `replace ../..` — checkout the framework
-      # into the expected location so the build resolves correctly.
+      # Checkout the framework so the replace directive resolves.
       - uses: actions/checkout@v4
         with:
           repository: orchestra-mcp/framework
           path: _framework
 
-      - name: Rewrite replace directive
-        working-directory: plugins/mcp
+      - name: Rewrite replace directive to point to framework checkout
         run: |
-          go mod edit -replace github.com/orchestra-mcp/framework=../../_framework
+          go mod edit -replace github.com/orchestra-mcp/framework=./_framework
 
       - uses: actions/setup-go@v5
         with:
@@ -35,6 +33,5 @@ jobs:
         with:
           version: latest
           args: release --clean
-          workdir: plugins/mcp
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
