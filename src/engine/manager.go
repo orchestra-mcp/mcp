@@ -6,8 +6,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"runtime"
-	"syscall"
 	"time"
 )
 
@@ -44,10 +42,7 @@ func (m *Manager) Start(workspace string) error {
 	m.cmd.Stdout = os.Stderr // engine stdout → MCP stderr (not JSON-RPC stdout)
 	m.cmd.Stderr = os.Stderr
 
-	// Process group for clean cleanup (unix only)
-	if runtime.GOOS != "windows" {
-		m.cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	}
+	setProcAttr(m.cmd)
 
 	if err := m.cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start engine: %w", err)
@@ -88,12 +83,7 @@ func (m *Manager) kill() {
 	if m.cmd == nil || m.cmd.Process == nil {
 		return
 	}
-	if runtime.GOOS != "windows" {
-		// Kill process group
-		_ = syscall.Kill(-m.cmd.Process.Pid, syscall.SIGTERM)
-	} else {
-		_ = m.cmd.Process.Kill()
-	}
+	killProcess(m.cmd)
 	done := make(chan struct{})
 	go func() { _ = m.cmd.Wait(); close(done) }()
 	select {
