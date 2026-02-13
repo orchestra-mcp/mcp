@@ -19,7 +19,7 @@ npx @orchestra-mcp/cli --help
 brew install orchestra-mcp/tap/orchestra-mcp
 
 # Direct download
-curl -fsSL https://raw.githubusercontent.com/orchestra-mcp/mcp/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/orchestra-mcp/mcp/master/scripts/install.sh | sh
 ```
 
 ## Quick Start
@@ -89,7 +89,7 @@ Supported platforms:
 - [GitHub](https://github.com/orchestra-mcp/mcp)
 - [Documentation](https://github.com/orchestra-mcp/mcp#readme)
 - [Issue Tracker](https://github.com/orchestra-mcp/mcp/issues)
-- [Changelog](https://github.com/orchestra-mcp/mcp/blob/main/CHANGELOG.md)
+- [Changelog](https://github.com/orchestra-mcp/mcp/blob/master/CHANGELOG.md)
 
 ## License
 
