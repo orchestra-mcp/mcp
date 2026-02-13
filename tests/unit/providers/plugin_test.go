@@ -65,7 +65,7 @@ func TestMcpToolsCount(t *testing.T) {
 	}
 	p.Activate(ctx)
 	tools := p.McpTools()
-	if len(tools) != 40 {
-		t.Errorf("McpTools count = %d, want 40", len(tools))
+	if len(tools) != 42 {
+		t.Errorf("McpTools count = %d, want 42", len(tools))
 	}
 }

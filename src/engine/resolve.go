@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	BinaryName = "orchestra-engine"
+	BinaryName  = "orchestra-engine"
 	DefaultPort = 50051
 	PortEnvVar  = "ORCHESTRA_ENGINE_PORT"
 )

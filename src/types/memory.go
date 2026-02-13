@@ -4,8 +4,8 @@ package types
 type MemoryChunk struct {
 	ID        string   `yaml:"id" json:"id"`
 	Project   string   `yaml:"project" json:"project"`
-	Source    string   `yaml:"source" json:"source"`         // task, prd, session, user
-	SourceID  string   `yaml:"source_id" json:"source_id"`   // task ID, session ID, etc.
+	Source    string   `yaml:"source" json:"source"`       // task, prd, session, user
+	SourceID  string   `yaml:"source_id" json:"source_id"` // task ID, session ID, etc.
 	Summary   string   `yaml:"summary" json:"summary"`
 	Content   string   `yaml:"content" json:"content"`
 	Tags      []string `yaml:"tags,omitempty" json:"tags,omitempty"`
@@ -29,7 +29,7 @@ type SessionLog struct {
 
 // SessionEvent is a single event within a session log.
 type SessionEvent struct {
-	Type      string `yaml:"type" json:"type"`           // tool_call, decision, output
+	Type      string `yaml:"type" json:"type"` // tool_call, decision, output
 	Summary   string `yaml:"summary" json:"summary"`
 	Timestamp string `yaml:"timestamp" json:"timestamp"`
 }

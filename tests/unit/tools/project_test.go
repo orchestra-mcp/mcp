@@ -65,3 +65,50 @@ func TestGetProjectStatus(t *testing.T) {
 		t.Errorf("slug = %v, want demo", ps["slug"])
 	}
 }
+
+func TestReadPrd(t *testing.T) {
+	ws := t.TempDir()
+	toolList := tools.Project(ws)
+	toolList[1].Handler(map[string]any{"name": "Demo", "description": "My project"})
+	res, err := toolList[3].Handler(map[string]any{"project": "demo"})
+	if err != nil {
+		t.Fatalf("read_prd error: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("read_prd returned error: %s", res.Content[0].Text)
+	}
+	if res.Content[0].Text == "" {
+		t.Error("expected non-empty PRD")
+	}
+}
+
+func TestWritePrd(t *testing.T) {
+	ws := t.TempDir()
+	toolList := tools.Project(ws)
+	toolList[1].Handler(map[string]any{"name": "Demo", "description": "d"})
+	res, _ := toolList[4].Handler(map[string]any{
+		"project": "demo", "content": "# Updated PRD\n\nNew content",
+	})
+	if res.IsError {
+		t.Fatalf("write_prd error: %s", res.Content[0].Text)
+	}
+	if res.Content[0].Text != "PRD updated" {
+		t.Errorf("expected 'PRD updated', got %s", res.Content[0].Text)
+	}
+
+	// Read back
+	readRes, _ := toolList[3].Handler(map[string]any{"project": "demo"})
+	if readRes.Content[0].Text != "# Updated PRD\n\nNew content" {
+		t.Errorf("PRD content mismatch: %s", readRes.Content[0].Text)
+	}
+}
+
+func TestCreateProjectDuplicate(t *testing.T) {
+	ws := t.TempDir()
+	toolList := tools.Project(ws)
+	toolList[1].Handler(map[string]any{"name": "Demo", "description": "d"})
+	res, _ := toolList[1].Handler(map[string]any{"name": "Demo", "description": "d"})
+	if !res.IsError {
+		t.Error("expected error for duplicate project")
+	}
+}
