@@ -28,7 +28,7 @@ npm install -g @orchestra-mcp/cli
 ### Direct Download
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/orchestra-mcp/mcp/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/orchestra-mcp/mcp/master/scripts/install.sh | sh
 ```
 
 ### From Source

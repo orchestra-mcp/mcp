@@ -1,6 +1,6 @@
 #!/bin/sh
 # Orchestra MCP installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/orchestra-mcp/mcp/main/scripts/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/orchestra-mcp/mcp/master/scripts/install.sh | sh
 set -e
 
 REPO="orchestra-mcp/mcp"
