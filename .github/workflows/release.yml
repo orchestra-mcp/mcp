@@ -11,19 +11,19 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # Checkout the framework so the replace directive resolves.
+      # Checkout the MCP plugin into a nested path that matches
+      # the replace directive (replace ../.. => framework root).
+      # Layout: workspace/plugins/mcp/ (this repo) + workspace/ (framework)
       - uses: actions/checkout@v4
         with:
           repository: orchestra-mcp/framework
-          path: _framework
+          path: workspace
+          fetch-depth: 0
 
-      - name: Rewrite replace directive to point to framework checkout
-        run: |
-          go mod edit -replace github.com/orchestra-mcp/framework=./_framework
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: workspace/plugins/mcp
 
       - uses: actions/setup-go@v5
         with:
@@ -33,5 +33,6 @@ jobs:
         with:
           version: latest
           args: release --clean
+          workdir: workspace/plugins/mcp
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
