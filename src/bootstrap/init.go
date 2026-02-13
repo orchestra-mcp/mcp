@@ -34,7 +34,8 @@ func Run(workspaceRoot string) error {
 		return fmt.Errorf("create .projects: %w", err)
 	}
 
-	skillDir := filepath.Join(projDir, "skills", "project-manager")
+	claudeDir := filepath.Join(abs, ".claude")
+	skillDir := filepath.Join(claudeDir, "skills", "project-manager")
 	if err := os.MkdirAll(skillDir, 0o755); err != nil {
 		return fmt.Errorf("create skills dir: %w", err)
 	}
@@ -42,7 +43,7 @@ func Run(workspaceRoot string) error {
 		return fmt.Errorf("write SKILL.md: %w", err)
 	}
 
-	agentDir := filepath.Join(projDir, "agents")
+	agentDir := filepath.Join(claudeDir, "agents")
 	if err := os.MkdirAll(agentDir, 0o755); err != nil {
 		return fmt.Errorf("create agents dir: %w", err)
 	}
@@ -55,8 +56,9 @@ func Run(workspaceRoot string) error {
 	fmt.Printf("  Type:     %s\n", projectType)
 	fmt.Printf("  Root:     %s\n", abs)
 	fmt.Printf("  Config:   .mcp.json\n")
-	fmt.Printf("  Skills:   .projects/%s/skills/\n", projectName)
-	fmt.Printf("  Agents:   .projects/%s/agents/\n", projectName)
+	fmt.Printf("  Data:     .projects/%s/\n", projectName)
+	fmt.Printf("  Skills:   .claude/skills/\n")
+	fmt.Printf("  Agents:   .claude/agents/\n")
 	return nil
 }
 
