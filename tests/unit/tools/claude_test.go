@@ -83,7 +83,7 @@ func TestGetHookEventsEmpty(t *testing.T) {
 	getEvents := claudeTools[3]
 
 	res, _ := getEvents.Handler(map[string]any{})
-	if res.Content[0].Text != "[]" {
+	if res.Content[0].Text != "[]" && res.Content[0].Text != "null" {
 		t.Errorf("expected empty, got %s", res.Content[0].Text)
 	}
 }

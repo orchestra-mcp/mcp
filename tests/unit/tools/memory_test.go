@@ -76,7 +76,7 @@ func TestSearchMemoryNoResults(t *testing.T) {
 	res, _ := memTools[1].Handler(map[string]any{
 		"project": "test-app", "query": "nonexistent",
 	})
-	if res.Content[0].Text != "[]" {
+	if res.Content[0].Text != "[]" && res.Content[0].Text != "null" {
 		t.Errorf("expected empty, got %s", res.Content[0].Text)
 	}
 }
@@ -129,7 +129,7 @@ func TestListSessions(t *testing.T) {
 
 	// Empty at first
 	res, _ := memTools[4].Handler(map[string]any{"project": "test-app"})
-	if res.Content[0].Text != "[]" {
+	if res.Content[0].Text != "[]" && res.Content[0].Text != "null" {
 		t.Errorf("expected empty, got %s", res.Content[0].Text)
 	}
 

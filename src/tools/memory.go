@@ -242,9 +242,7 @@ func toonSaveMemory(ws, slug string, args map[string]any, tags []string) (*t.Too
 func toonSearchMemory(ws, slug, query string, limit int) (*t.ToolResult, error) {
 	query = strings.ToLower(query)
 	var idx t.MemoryIndex
-	if toon.ParseFile(chunksPath(ws, slug), &idx) != nil {
-		return h.JSONResult([]any{}), nil
-	}
+	_ = toon.ParseFile(chunksPath(ws, slug), &idx) // ignore error: file may not exist yet
 	type scored struct {
 		Chunk t.MemoryChunk `json:"chunk"`
 		Score float64       `json:"score"`
@@ -326,9 +324,7 @@ func toonSaveSession(ws, slug, sessionID, summary string, args map[string]any) (
 func toonListSessions(ws, slug string, limit int) (*t.ToolResult, error) {
 	indexPath := filepath.Join(sessionsDir(ws, slug), "index.toon")
 	var idx t.SessionIndex
-	if toon.ParseFile(indexPath, &idx) != nil {
-		return h.JSONResult([]any{}), nil
-	}
+	_ = toon.ParseFile(indexPath, &idx) // ignore error: file may not exist yet
 	sessions := idx.Sessions
 	if len(sessions) > limit {
 		sessions = sessions[len(sessions)-limit:]

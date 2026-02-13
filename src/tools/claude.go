@@ -139,9 +139,7 @@ func getHookEvents(ws string) t.Tool {
 		Handler: func(args map[string]any) (*t.ToolResult, error) {
 			logPath := filepath.Join(ws, ".projects", ".events", "hook-events.toon")
 			var log t.HookEventLog
-			if toon.ParseFile(logPath, &log) != nil {
-				return h.JSONResult([]any{}), nil
-			}
+			_ = toon.ParseFile(logPath, &log) // ignore error: file may not exist yet
 			events := log.Events
 			if typeFilter := h.GetString(args, "event_type"); typeFilter != "" {
 				var filtered []t.HookEvent
