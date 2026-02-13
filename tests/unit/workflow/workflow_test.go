@@ -133,7 +133,7 @@ func TestWaitingStatuses(t *testing.T) {
 
 func TestAdvanceMapHappyPath(t *testing.T) {
 	chain := []string{"in-progress", "ready-for-testing", "in-testing", "ready-for-docs", "in-docs", "documented", "in-review", "done"}
-	for i := 0; i < len(chain)-1; i++ {
+	for i := range len(chain) - 1 {
 		next, ok := workflow.AdvanceMap[chain[i]]
 		if !ok {
 			t.Fatalf("AdvanceMap[%q] missing", chain[i])

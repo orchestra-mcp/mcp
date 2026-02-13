@@ -65,7 +65,7 @@ func TestGetHookEventsLimit(t *testing.T) {
 	receive := claudeTools[2]
 	getEvents := claudeTools[3]
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		receive.Handler(map[string]any{"event_type": "PostToolUse"})
 	}
 

@@ -139,7 +139,7 @@ func getHookEvents(ws string) t.Tool {
 		Handler: func(args map[string]any) (*t.ToolResult, error) {
 			logPath := filepath.Join(ws, ".projects", ".events", "hook-events.toon")
 			var log t.HookEventLog
-			if err := toon.ParseFile(logPath, &log); err != nil {
+			if toon.ParseFile(logPath, &log) != nil {
 				return h.JSONResult([]any{}), nil
 			}
 			events := log.Events

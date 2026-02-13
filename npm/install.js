@@ -5,8 +5,6 @@ const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const https = require("https");
-const { createGunzip } = require("zlib");
-const tar = require("tar");
 
 const REPO = "orchestra-mcp/mcp";
 const BINARY = "orchestra-mcp";

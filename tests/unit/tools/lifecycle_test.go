@@ -131,7 +131,7 @@ func TestRejectTask(t *testing.T) {
 	reject := lcTools[1]
 
 	// Advance to in-review (7 advances: in-progress -> ... -> in-review)
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		advance.Handler(map[string]any{
 			"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID,
 		})

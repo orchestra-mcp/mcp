@@ -242,7 +242,7 @@ func toonSaveMemory(ws, slug string, args map[string]any, tags []string) (*t.Too
 func toonSearchMemory(ws, slug, query string, limit int) (*t.ToolResult, error) {
 	query = strings.ToLower(query)
 	var idx t.MemoryIndex
-	if err := toon.ParseFile(chunksPath(ws, slug), &idx); err != nil {
+	if toon.ParseFile(chunksPath(ws, slug), &idx) != nil {
 		return h.JSONResult([]any{}), nil
 	}
 	type scored struct {
@@ -326,7 +326,7 @@ func toonSaveSession(ws, slug, sessionID, summary string, args map[string]any) (
 func toonListSessions(ws, slug string, limit int) (*t.ToolResult, error) {
 	indexPath := filepath.Join(sessionsDir(ws, slug), "index.toon")
 	var idx t.SessionIndex
-	if err := toon.ParseFile(indexPath, &idx); err != nil {
+	if toon.ParseFile(indexPath, &idx) != nil {
 		return h.JSONResult([]any{}), nil
 	}
 	sessions := idx.Sessions
