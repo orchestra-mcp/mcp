@@ -21,16 +21,9 @@ archives:
       - goos: windows
         formats: [zip]
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
-
-brews:
-  - repository:
-      owner: orchestra-mcp
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    homepage: https://github.com/orchestra-mcp/mcp
-    description: AI-powered project management via Model Context Protocol
-    install: |
-      bin.install "orchestra-mcp"
+    files:
+      - src: "../../dist/engine/orchestra-engine*"
+        strip_parent: true
 
 checksum:
   name_template: checksums.txt

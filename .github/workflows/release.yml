@@ -35,10 +35,7 @@ jobs:
           args: release --clean
           workdir: workspace/plugins/mcp
         env:
-          # GITHUB_TOKEN for creating releases on this repo.
-          # HOMEBREW_TAP_TOKEN (PAT) for pushing formula to orchestra-mcp/homebrew-tap.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
       # Publish npm package with version matching the git tag
       - uses: actions/setup-node@v4

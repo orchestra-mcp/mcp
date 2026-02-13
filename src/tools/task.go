@@ -141,6 +141,7 @@ func updateTask(ws string) t.Tool {
 			if err := toon.ParseFile(p, &task); err != nil {
 				return h.ErrorResult(err.Error()), nil
 			}
+			oldStatus := task.Status
 			if h.Has(args, "status") {
 				newStatus := h.GetString(args, "status")
 				if !workflow.IsValid(task.Status, newStatus) {
@@ -161,6 +162,12 @@ func updateTask(ws string) t.Tool {
 			task.UpdatedAt = h.Now()
 			if err := toon.WriteFile(p, &task); err != nil {
 				return h.ErrorResult(err.Error()), nil
+			}
+			if oldStatus != task.Status {
+				workflow.Emit(workflow.TransitionEvent{
+					Project: slug, EpicID: epicID, StoryID: storyID, TaskID: taskID,
+					Type: task.Type, From: oldStatus, To: task.Status, Time: task.UpdatedAt,
+				})
 			}
 			storyPath := filepath.Join(projDir, "epics", epicID, "stories", storyID, "story.toon")
 			_ = h.UpdateParentChildren(storyPath, "update", t.IssueChild{ID: taskID, Title: task.Title, Status: task.Status})

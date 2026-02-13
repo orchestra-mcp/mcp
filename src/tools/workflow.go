@@ -12,10 +12,18 @@ import (
 )
 
 const (
-	statusTodo       = "todo"
-	statusInProgress = "in-progress"
-	statusBacklog    = "backlog"
-	statusDone       = "done"
+	statusBacklog         = "backlog"
+	statusTodo            = "todo"
+	statusInProgress      = "in-progress"
+	statusBlocked         = "blocked"
+	statusReadyForTesting = "ready-for-testing"
+	statusInTesting       = "in-testing"
+	statusReadyForDocs    = "ready-for-docs"
+	statusInDocs          = "in-docs"
+	statusDocumented      = "documented"
+	statusInReview        = "in-review"
+	statusDone            = "done"
+	statusRejected        = "rejected"
 )
 
 var (
@@ -44,7 +52,9 @@ func getNextTask(ws string) t.Tool {
 			var actionable []h.ScannedTask
 			for _, tk := range tasks {
 				s := tk.Data.Status
-				if s == statusInProgress || s == statusTodo || s == statusBacklog {
+				if s == statusInProgress || s == statusTodo || s == statusBacklog ||
+					s == statusReadyForTesting || s == statusReadyForDocs ||
+					s == statusDocumented {
 					actionable = append(actionable, tk)
 				}
 			}
@@ -86,9 +96,14 @@ func setCurrentTask(ws string) t.Tool {
 			if !workflow.IsValid(task.Status, statusInProgress) {
 				return h.ErrorResult(fmt.Sprintf("cannot transition %s -> in-progress from %s", taskID, task.Status)), nil
 			}
+			from := task.Status
 			task.Status = statusInProgress
 			task.UpdatedAt = h.Now()
 			_ = toon.WriteFile(taskPath, &task)
+			workflow.Emit(workflow.TransitionEvent{
+				Project: slug, EpicID: epicID, StoryID: storyID, TaskID: taskID,
+				Type: task.Type, From: from, To: statusInProgress, Time: task.UpdatedAt,
+			})
 			// Cascade to story
 			storyPath := filepath.Join(projDir, "epics", epicID, "stories", storyID, "story.toon")
 			var story t.IssueData
@@ -145,13 +160,18 @@ func completeTask(ws string) t.Tool {
 			if err := toon.ParseFile(taskPath, &task); err != nil {
 				return h.ErrorResult(err.Error()), nil
 			}
-			if !workflow.IsValid(task.Status, "review") {
-				return h.ErrorResult(fmt.Sprintf("cannot complete %s from %s", taskID, task.Status)), nil
+			if !workflow.IsValid(task.Status, statusReadyForTesting) {
+				return h.ErrorResult(fmt.Sprintf("cannot complete %s from %s (needs in-progress state)", taskID, task.Status)), nil
 			}
-			task.Status = "review"
+			from := task.Status
+			task.Status = statusReadyForTesting
 			task.UpdatedAt = h.Now()
 			_ = toon.WriteFile(taskPath, &task)
-			// Check story completion
+			workflow.Emit(workflow.TransitionEvent{
+				Project: slug, EpicID: epicID, StoryID: storyID, TaskID: taskID,
+				Type: task.Type, From: from, To: statusReadyForTesting, Time: task.UpdatedAt,
+			})
+			// Update story children
 			storyPath := filepath.Join(projDir, "epics", epicID, "stories", storyID, "story.toon")
 			var story t.IssueData
 			if toon.ParseFile(storyPath, &story) == nil {
@@ -163,7 +183,7 @@ func completeTask(ws string) t.Tool {
 					_ = toon.WriteFile(storyPath, &story)
 				}
 			}
-			// Check epic completion
+			// Update epic children
 			epicPath := filepath.Join(projDir, "epics", epicID, "epic.toon")
 			var epic t.IssueData
 			if toon.ParseFile(epicPath, &epic) == nil {
@@ -244,6 +264,7 @@ func getWorkflowStatus(ws string) t.Tool {
 			byStatus := map[string]int{}
 			byType := map[string]int{}
 			var blocked, inProgress, ready []string
+			var testing, documenting, reviewing []string
 			total, done := 0, 0
 			for _, tk := range tasks {
 				total++
@@ -253,12 +274,18 @@ func getWorkflowStatus(ws string) t.Tool {
 					done++
 				}
 				switch tk.Data.Status {
-				case "blocked":
+				case statusBlocked:
 					blocked = append(blocked, tk.Data.ID)
 				case statusInProgress:
 					inProgress = append(inProgress, tk.Data.ID)
 				case statusTodo:
 					ready = append(ready, tk.Data.ID)
+				case statusReadyForTesting, statusInTesting:
+					testing = append(testing, tk.Data.ID)
+				case statusReadyForDocs, statusInDocs, statusDocumented:
+					documenting = append(documenting, tk.Data.ID)
+				case statusInReview:
+					reviewing = append(reviewing, tk.Data.ID)
 				}
 			}
 			pct := 0.0
@@ -269,6 +296,7 @@ func getWorkflowStatus(ws string) t.Tool {
 				"total": total, "done": done, "completion_pct": fmt.Sprintf("%.1f", pct),
 				"by_status": byStatus, "by_type": byType,
 				"blocked": blocked, "in_progress": inProgress, "ready": ready,
+				"testing": testing, "documenting": documenting, "reviewing": reviewing,
 			}), nil
 		},
 	}

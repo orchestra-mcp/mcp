@@ -47,18 +47,10 @@ func MyCategory(workspace string) []t.Tool {
 }
 ```
 
-### 2. Register in Tools Aggregation
-
-Add the tool group to `providers/tools.go`:
+### 2. Register in `cmd/main.go`
 
 ```go
-func (p *McpPlugin) builtinTools() []t.Tool {
-    ws := p.workspace
-    var all []t.Tool
-    // ... existing tool groups
-    all = append(all, tools.MyCategory(ws)...)
-    return all
-}
+s.RegisterTools(tools.MyCategory(ws))
 ```
 
 ### 3. Write Tests
@@ -83,6 +75,90 @@ func TestMyTool(t *testing.T) {
         t.Fatalf("tool error: %s", res.Content[0].Text)
     }
 }
+```
+
+## Adding an Engine-Aware Tool
+
+Tools that need the Rust engine follow the bridge pattern — gRPC first, TOON fallback.
+
+### 1. Accept the Bridge
+
+```go
+func MyEngineTools(ws string, bridge *engine.Bridge) []t.Tool {
+    return []t.Tool{myEngineTool(ws, bridge)}
+}
+```
+
+### 2. gRPC-First Pattern
+
+```go
+func myEngineTool(ws string, bridge *engine.Bridge) t.Tool {
+    return t.Tool{
+        Definition: t.ToolDefinition{
+            Name: "my_engine_tool", Description: "Uses engine when available",
+            InputSchema: t.InputSchema{Type: "object", Properties: map[string]any{
+                "project": map[string]any{"type": "string"},
+                "query":   map[string]any{"type": "string"},
+            }, Required: []string{"project", "query"}},
+        },
+        Handler: func(args map[string]any) (*t.ToolResult, error) {
+            slug := h.GetString(args, "project")
+            query := h.GetString(args, "query")
+
+            // Try gRPC first
+            if bridge.UsingEngine() {
+                resp, err := bridge.Client.SearchMemory(slug, query, 10)
+                if err == nil {
+                    return h.JSONResult(resp.Results), nil
+                }
+                fmt.Fprintf(os.Stderr, "[my_tool] gRPC failed, TOON fallback: %v\n", err)
+            }
+
+            // TOON fallback
+            return toonFallback(ws, slug, query)
+        },
+    }
+}
+```
+
+### 3. Register with Bridge
+
+In `cmd/main.go`:
+
+```go
+bridge := engine.NewBridge(client, ws)
+s.RegisterTools(tools.MyEngineTools(ws, bridge))
+```
+
+## Using the Workflow
+
+### Validate Transitions
+
+```go
+import "github.com/orchestra-mcp/mcp/src/workflow"
+
+if !workflow.IsValid(task.Status, newStatus) {
+    return h.ErrorResult("invalid transition"), nil
+}
+```
+
+### Advance Happy Path
+
+```go
+next, ok := workflow.AdvanceMap[task.Status]
+if !ok {
+    return h.ErrorResult("cannot advance from " + task.Status), nil
+}
+task.Status = next
+```
+
+### Emit Events
+
+```go
+workflow.Emit(workflow.TransitionEvent{
+    Project: slug, EpicID: epicID, StoryID: storyID, TaskID: taskID,
+    Type: task.Type, From: oldStatus, To: newStatus, Time: h.Now(),
+})
 ```
 
 ## Result Helpers
@@ -128,6 +204,16 @@ toon.WriteFile(path, &myStruct)
 var data MyStruct
 toon.ParseFile(path, &data)
 ```
+
+## Adding Bootstrap Resources
+
+To bundle new resources that get installed on `orchestra-mcp init`:
+
+1. Add files to `src/bootstrap/resources/` (skills, agents, docs, or hooks)
+2. Resources are auto-embedded via `//go:embed` directives in `init.go`
+3. Skills go in `resources/skills/{name}/SKILL.md`
+4. Agents go in `resources/agents/{name}.md`
+5. Docs go in `resources/docs/{NAME}.md` (installed to project root)
 
 ## Adding External Tools (From Another Plugin)
 

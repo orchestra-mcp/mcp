@@ -50,5 +50,18 @@ fi
 
 chmod +x "$INSTALL_DIR/$BINARY"
 echo "Installed $BINARY v$VERSION to $INSTALL_DIR/$BINARY"
+
+# Install engine binary if bundled
+ENGINE="orchestra-engine"
+if [ -f "$TMP_DIR/$ENGINE" ]; then
+  if [ -w "$INSTALL_DIR" ]; then
+    mv "$TMP_DIR/$ENGINE" "$INSTALL_DIR/$ENGINE"
+  else
+    sudo mv "$TMP_DIR/$ENGINE" "$INSTALL_DIR/$ENGINE"
+  fi
+  chmod +x "$INSTALL_DIR/$ENGINE"
+  echo "Installed $ENGINE to $INSTALL_DIR/$ENGINE"
+fi
+
 echo ""
 echo "Run '$BINARY --help' to get started."

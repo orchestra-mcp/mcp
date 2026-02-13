@@ -1,6 +1,6 @@
 # Orchestra MCP Plugin
 
-Model Context Protocol server for AI-powered project management. Pure Go, 40 built-in tools, extensible by other plugins.
+Model Context Protocol server for AI-powered project management. Pure Go, 57 built-in tools, Rust engine integration, extensible by other plugins.
 
 ## Overview
 
@@ -9,13 +9,14 @@ The MCP plugin provides a complete project management toolkit that AI assistants
 - **Standalone CLI** — any project, no Go server needed
 - **Integrated plugin** — registered with Orchestra's plugin system, tools available via REST API
 
+Features:
+- **57 MCP tools** — project hierarchy, 13-state workflow, PRD generation, memory/RAG, session tracking
+- **Rust engine** — optional gRPC engine for vector search and persistent memory (auto-starts/stops)
+- **TOON fallback** — works without the engine using local YAML-based storage
+- **Bundled skills & agents** — installs 21 skills, 16 agents, and CLAUDE.md/AGENTS.md/CONTEXT.md on init
+- **Claude Code hooks** — event pipeline for tool use tracking
+
 ## Install
-
-### Homebrew (macOS/Linux)
-
-```bash
-brew install orchestra-mcp/tap/orchestra-mcp
-```
 
 ### npm / npx
 
@@ -42,11 +43,25 @@ cd plugins/mcp && go build -o orchestra-mcp ./src/cmd/
 ### Standalone CLI
 
 ```bash
-# Initialize a workspace (creates .projects/, .mcp.json)
+# Initialize a workspace (creates .projects/, .mcp.json, .claude/)
 ./orchestra-mcp init --workspace /path/to/project
 
 # Start stdio MCP server
 ./orchestra-mcp --workspace /path/to/project
+```
+
+### What `init` Installs
+
+```
+.mcp.json                      # MCP server config
+.projects/{name}/              # Project data (TOON format)
+.claude/skills/                # 21 bundled skills
+.claude/agents/                # 16 bundled agents
+.claude/hooks/                 # Hook scripts
+.claude/settings.json          # Hook event config
+CLAUDE.md                      # Project instructions for AI
+AGENTS.md                      # Agent reference
+CONTEXT.md                     # Project context
 ```
 
 ### Integrated Plugin
@@ -72,7 +87,7 @@ Add to `.mcp.json`:
 {
   "mcpServers": {
     "orchestra": {
-      "command": "plugins/mcp/orchestra-mcp",
+      "command": "orchestra-mcp",
       "args": ["--workspace", "."]
     }
   }
@@ -90,25 +105,31 @@ plugins/mcp/
 │   ├── plugin.go                   # McpPlugin — Go plugin registration
 │   └── tools.go                    # Tool bridge + REST API routes
 ├── src/
-│   ├── cmd/main.go                 # CLI entry point (--version, --help)
+│   ├── cmd/main.go                 # CLI entry point (engine lifecycle)
 │   ├── version/version.go          # Build-time version (ldflags)
 │   ├── types/                      # Protocol, tool, data types
 │   ├── toon/toon.go                # TOON file read/write (YAML)
-│   ├── workflow/workflow.go        # Issue state machine
-│   ├── helpers/                    # Path, string, args, result utilities
-│   ├── transport/server.go         # Stdio JSON-RPC server
-│   ├── tools/                      # 40 tool implementations
+│   ├── workflow/workflow.go         # 13-state lifecycle machine
+│   ├── helpers/                     # Path, string, args, result utilities
+│   ├── transport/server.go          # Stdio JSON-RPC server
+│   ├── engine/                      # Rust engine integration
+│   │   ├── resolve.go              # Binary discovery
+│   │   ├── manager.go              # Subprocess lifecycle
+│   │   ├── client.go               # gRPC client wrapper
+│   │   └── bridge.go               # gRPC/TOON fallback dispatcher
+│   ├── gen/memoryv1/               # Generated protobuf code
+│   ├── tools/                       # 57 tool implementations (12 files)
 │   └── bootstrap/
-│       ├── init.go                 # Workspace init command
-│       └── resources/              # go:embed bundled skills + agents
+│       ├── init.go                  # Workspace init command
+│       └── resources/               # go:embed bundled skills, agents, docs
 ├── tests/
-│   └── unit/                       # Unit tests by package
-├── npm/                            # npm wrapper (@orchestra-mcp/cli)
-├── scripts/install.sh              # Curl one-liner installer
-└── docs/                           # Plugin documentation
+│   └── unit/                        # Unit tests by package
+├── npm/                             # npm wrapper (@orchestra-mcp/cli)
+├── scripts/install.sh               # Curl one-liner installer
+└── docs/                            # Plugin documentation
 ```
 
-## Tools (40 Built-in)
+## Tools (57 Built-in)
 
 | Category | Count | Tools |
 |----------|-------|-------|
@@ -117,11 +138,37 @@ plugins/mcp/
 | Story | 5 | `list_stories`, `create_story`, `get_story`, `update_story`, `delete_story` |
 | Task | 5 | `list_tasks`, `create_task`, `get_task`, `update_task`, `delete_task` |
 | Workflow | 5 | `get_next_task`, `set_current_task`, `complete_task`, `search`, `get_workflow_status` |
-| PRD | 7 | `start_prd_session`, `answer_prd_question`, `get_prd_session`, `abandon_prd_session`, `skip_prd_question`, `back_prd_question`, `preview_prd` |
-| Bugfix | 2 | `report_bug`, `log_request` |
+| Lifecycle | 2 | `advance_task`, `reject_task` |
+| PRD | 9 | `start_prd_session`, `answer_prd_question`, `get_prd_session`, `abandon_prd_session`, `skip_prd_question`, `back_prd_question`, `preview_prd`, `split_prd`, `list_prd_phases` |
+| Quality | 2 | `report_bug`, `log_request` |
+| Memory | 6 | `save_memory`, `search_memory`, `get_context`, `save_session`, `list_sessions`, `get_session` |
 | Usage | 3 | `get_usage`, `record_usage`, `reset_session_usage` |
-| Readme | 1 | `regenerate_readme` |
 | Artifacts | 2 | `save_plan`, `list_plans` |
+| Claude | 7 | `list_skills`, `list_agents`, `install_skills`, `install_agents`, `install_docs`, `receive_hook_event`, `get_hook_events` |
+| Docs | 1 | `regenerate_readme` |
+
+## 13-State Workflow
+
+```
+backlog → todo → in-progress → ready-for-testing → in-testing
+→ ready-for-docs → in-docs → documented → in-review → done
+
+Special: blocked (from in-progress), rejected (from in-review), cancelled (terminal)
+```
+
+Use `advance_task` for happy-path progression. Use `reject_task` to reject from review (auto-creates bug). Transitions are validated — invalid transitions return an error with valid next states.
+
+## Rust Engine Integration
+
+The MCP binary optionally auto-starts the `orchestra-engine` Rust binary for:
+- Vector search memory (gRPC)
+- Persistent session storage
+- Full-text search indexing
+
+If the engine binary is not found, all memory tools fall back to TOON (local YAML files). The engine is discovered by:
+1. Same directory as the `orchestra-mcp` binary
+2. `PATH` lookup
+3. Falls back to TOON if not found
 
 ## Extensibility
 
@@ -139,16 +186,6 @@ mcpPlugin.RegisterExternalTools([]plugins.McpToolDefinition{
 ```
 
 External tools appear in all channels: stdio, REST API, and `CollectMcpTools()`.
-
-## Workflow State Machine
-
-```
-backlog → todo → in-progress → review → done
-                → blocked → in-progress
-                                        → cancelled
-```
-
-Transitions are validated — invalid transitions return an error with valid next states.
 
 ## REST API
 
@@ -200,6 +237,10 @@ make check     # full pipeline: format check + lint + tests
 
 ## Documentation
 
-- [Architecture](docs/architecture.md) — internal architecture and data flow
-- [Tool Development](docs/tool-development.md) — adding new tools
+- [Architecture](docs/architecture.md) — internal architecture, dual-mode operation, data storage
+- [Tool Development](docs/tool-development.md) — adding new tools, engine-aware tools, workflow API
+- [13-State Workflow](docs/workflow.md) — lifecycle states, transitions, advance/reject/complete
+- [Engine Integration](docs/engine-integration.md) — Rust gRPC engine, bridge pattern, distribution
+- [Bootstrap & Init](docs/bootstrap.md) — what gets installed, embedded resources, skills/agents
+- [Memory & Sessions](docs/memory.md) — memory system, session tracking, search, recommended flow
 - [Plugin System Guide](../../docs/guides/plugin-system.md) — framework docs

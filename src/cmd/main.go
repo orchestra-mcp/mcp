@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/orchestra-mcp/mcp/src/bootstrap"
+	"github.com/orchestra-mcp/mcp/src/engine"
 	"github.com/orchestra-mcp/mcp/src/tools"
 	"github.com/orchestra-mcp/mcp/src/transport"
 	"github.com/orchestra-mcp/mcp/src/version"
@@ -44,6 +45,30 @@ func main() {
 		return
 	}
 
+	// Start Rust engine (non-fatal if binary missing)
+	mgr := engine.NewManager()
+	if err := mgr.Start(ws); err != nil {
+		fmt.Fprintf(os.Stderr, "[Orchestra MCP] Engine: %v (using TOON fallback)\n", err)
+	} else {
+		fmt.Fprintf(os.Stderr, "[Orchestra MCP] Engine: running on %s\n", mgr.Addr())
+	}
+	defer mgr.Stop()
+
+	// Connect gRPC client if engine is running
+	var client *engine.Client
+	if mgr.IsRunning() {
+		c, err := engine.Dial(mgr.Addr())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[Orchestra MCP] Engine dial failed: %v\n", err)
+		} else {
+			client = c
+		}
+	}
+	if client != nil {
+		defer client.Close()
+	}
+	bridge := engine.NewBridge(client, ws)
+
 	s := transport.New("orchestra-mcp", version.Version)
 	s.RegisterTools(tools.Project(ws))
 	s.RegisterTools(tools.Epic(ws))
@@ -55,9 +80,16 @@ func main() {
 	s.RegisterTools(tools.Usage(ws))
 	s.RegisterTools(tools.Readme(ws))
 	s.RegisterTools(tools.Artifacts(ws))
+	s.RegisterTools(tools.Lifecycle(ws))
+	s.RegisterTools(tools.Claude(ws))
+	s.RegisterTools(tools.Memory(ws, bridge))
 
-	fmt.Fprintf(os.Stderr, "[Orchestra MCP] Server v%s running with %d tools\n",
-		version.Version, len(s.GetTools()))
+	memMode := "TOON fallback"
+	if bridge.UsingEngine() {
+		memMode = fmt.Sprintf("Rust engine (gRPC on %s)", mgr.Addr())
+	}
+	fmt.Fprintf(os.Stderr, "[Orchestra MCP] Server v%s running with %d tools | Memory: %s\n",
+		version.Version, len(s.GetTools()), memMode)
 	s.Run()
 }
 

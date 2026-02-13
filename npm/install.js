@@ -89,6 +89,14 @@ async function install() {
 
   fs.chmodSync(binaryPath, 0o755);
   console.log(`Installed ${BINARY} v${version} to ${binaryPath}`);
+
+  // Install engine binary if bundled
+  const engineName = os === "windows" ? "orchestra-engine.exe" : "orchestra-engine";
+  const enginePath = path.join(BIN_DIR, engineName);
+  if (fs.existsSync(enginePath)) {
+    fs.chmodSync(enginePath, 0o755);
+    console.log(`Installed orchestra-engine to ${enginePath}`);
+  }
 }
 
 install().catch((err) => {

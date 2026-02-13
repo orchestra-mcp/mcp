@@ -7,6 +7,9 @@ type PrdSession struct {
 	Status       string      `yaml:"status" json:"status"`
 	CurrentIndex int         `yaml:"current_index" json:"current_index"`
 	Answers      []PrdAnswer `yaml:"answers,omitempty" json:"answers,omitempty"`
+	ParentSlug   string      `yaml:"parent_slug,omitempty" json:"parent_slug,omitempty"`
+	Phase        int         `yaml:"phase,omitempty" json:"phase,omitempty"`
+	Phases       []string    `yaml:"phases,omitempty" json:"phases,omitempty"`
 }
 
 // PrdAnswer stores one answered PRD question.
@@ -17,9 +20,10 @@ type PrdAnswer struct {
 
 // PrdQuestion defines a PRD questionnaire item.
 type PrdQuestion struct {
-	Index    int    `yaml:"index" json:"index"`
-	Key      string `yaml:"key" json:"key"`
-	Section  string `yaml:"section" json:"section"`
-	Question string `yaml:"question" json:"question"`
-	Required bool   `yaml:"required" json:"required"`
+	Index    int      `yaml:"index" json:"index"`
+	Key      string   `yaml:"key" json:"key"`
+	Section  string   `yaml:"section" json:"section"`
+	Question string   `yaml:"question" json:"question"`
+	Required bool     `yaml:"required" json:"required"`
+	Options  []string `yaml:"options,omitempty" json:"options,omitempty"`
 }

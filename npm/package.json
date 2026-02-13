@@ -1,6 +1,6 @@
 {
   "name": "@orchestra-mcp/cli",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "AI-powered project management via Model Context Protocol",
   "license": "MIT",
   "repository": {

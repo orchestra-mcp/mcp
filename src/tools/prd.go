@@ -14,16 +14,16 @@ import (
 var prdQuestions = []t.PrdQuestion{
 	{Index: 0, Key: "project_name", Section: "overview", Question: "What is the project name?", Required: true},
 	{Index: 1, Key: "project_description", Section: "overview", Question: "Describe the project.", Required: true},
-	{Index: 2, Key: "target_audience", Section: "overview", Question: "Who is the target audience?", Required: true},
+	{Index: 2, Key: "target_audience", Section: "overview", Question: "Who is the target audience?", Required: true, Options: []string{"Developers", "End users", "Enterprise teams", "Internal team"}},
 	{Index: 3, Key: "primary_goals", Section: "goals", Question: "What are the primary goals?", Required: true},
-	{Index: 4, Key: "success_metrics", Section: "goals", Question: "How will success be measured?", Required: false},
+	{Index: 4, Key: "success_metrics", Section: "goals", Question: "How will success be measured?", Required: false, Options: []string{"User adoption rate", "Performance benchmarks", "Revenue targets", "User satisfaction score"}},
 	{Index: 5, Key: "functional_requirements", Section: "requirements", Question: "Functional requirements?", Required: true},
-	{Index: 6, Key: "non_functional_requirements", Section: "requirements", Question: "Non-functional requirements?", Required: false},
+	{Index: 6, Key: "non_functional_requirements", Section: "requirements", Question: "Non-functional requirements?", Required: false, Options: []string{"High availability (99.9%)", "Sub-100ms latency", "GDPR compliance", "Offline support"}},
 	{Index: 7, Key: "constraints", Section: "requirements", Question: "Constraints or limitations?", Required: false},
-	{Index: 8, Key: "tech_stack", Section: "technical", Question: "Tech stack?", Required: false},
+	{Index: 8, Key: "tech_stack", Section: "technical", Question: "Tech stack?", Required: false, Options: []string{"Go + React", "Python + React", "Node.js + React", "Rust + React"}},
 	{Index: 9, Key: "integrations", Section: "technical", Question: "Third-party integrations?", Required: false},
 	{Index: 10, Key: "milestones", Section: "timeline", Question: "Key milestones?", Required: false},
-	{Index: 11, Key: "deadline", Section: "timeline", Question: "Target deadline?", Required: false},
+	{Index: 11, Key: "deadline", Section: "timeline", Question: "Target deadline?", Required: false, Options: []string{"1 month", "3 months", "6 months", "1 year"}},
 }
 
 var sectionTitles = map[string]string{
@@ -78,7 +78,11 @@ func nextQ(s *t.PrdSession) map[string]any {
 		return map[string]any{"status": "complete"}
 	}
 	q := prdQuestions[s.CurrentIndex]
-	return map[string]any{"status": "in_progress", "question": q.Question, "key": q.Key, "index": s.CurrentIndex, "required": q.Required}
+	r := map[string]any{"status": "in_progress", "question": q.Question, "key": q.Key, "index": s.CurrentIndex, "required": q.Required}
+	if len(q.Options) > 0 {
+		r["options"] = q.Options
+	}
+	return r
 }
 
 func finishPrd(ws string, s *t.PrdSession) *t.ToolResult {
@@ -178,5 +182,100 @@ func Prd(ws string) []t.Tool {
 			}
 			return h.TextResult(generatePrdMarkdown(s)), nil
 		}},
+		splitPrd(ws),
+		listPrdPhases(ws),
+	}
+}
+
+func splitPrd(ws string) t.Tool {
+	return t.Tool{
+		Definition: t.ToolDefinition{
+			Name: "split_prd", Description: "Split completed PRD into numbered phases",
+			InputSchema: t.InputSchema{Type: "object", Properties: map[string]any{
+				"project": map[string]any{"type": "string", "description": "Project slug"},
+				"phases":  map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Phase names in order"},
+			}, Required: []string{"project", "phases"}},
+		},
+		Handler: func(a map[string]any) (*t.ToolResult, error) {
+			slug := h.GetString(a, "project")
+			parent, err := loadPrd(ws, slug)
+			if err != nil {
+				return h.ErrorResult(err.Error()), nil
+			}
+			if parent.Status != "complete" {
+				return h.ErrorResult("PRD must be complete before splitting"), nil
+			}
+			rawPhases, ok := a["phases"].([]any)
+			if !ok || len(rawPhases) < 2 {
+				return h.ErrorResult("provide at least 2 phase names"), nil
+			}
+			var phases []string
+			for _, p := range rawPhases {
+				if s, ok := p.(string); ok && s != "" {
+					phases = append(phases, s)
+				}
+			}
+			if len(phases) < 2 {
+				return h.ErrorResult("provide at least 2 phase names"), nil
+			}
+			parent.Phases = make([]string, len(phases))
+			for i, name := range phases {
+				phaseSlug := fmt.Sprintf("%s-phase-%d", slug, i+1)
+				parent.Phases[i] = phaseSlug
+				child := &t.PrdSession{
+					Slug:        phaseSlug,
+					ProjectName: fmt.Sprintf("%s — Phase %d: %s", parent.ProjectName, i+1, name),
+					Status:      "pending",
+					ParentSlug:  slug,
+					Phase:       i + 1,
+				}
+				dir := h.ProjectDir(ws, phaseSlug)
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					return h.ErrorResult(err.Error()), nil
+				}
+				if err := savePrd(ws, child); err != nil {
+					return h.ErrorResult(err.Error()), nil
+				}
+			}
+			if err := savePrd(ws, parent); err != nil {
+				return h.ErrorResult(err.Error()), nil
+			}
+			return h.JSONResult(map[string]any{"phases": parent.Phases, "count": len(phases)}), nil
+		},
+	}
+}
+
+func listPrdPhases(ws string) t.Tool {
+	return t.Tool{
+		Definition: t.ToolDefinition{
+			Name: "list_prd_phases", Description: "List PRD phases for a project",
+			InputSchema: sp(),
+		},
+		Handler: func(a map[string]any) (*t.ToolResult, error) {
+			slug := h.GetString(a, "project")
+			s, err := loadPrd(ws, slug)
+			if err != nil {
+				return h.ErrorResult(err.Error()), nil
+			}
+			if len(s.Phases) == 0 {
+				return h.JSONResult(map[string]any{"phases": []any{}, "message": "no phases — use split_prd first"}), nil
+			}
+			type phaseInfo struct {
+				Slug   string `json:"slug"`
+				Name   string `json:"name"`
+				Phase  int    `json:"phase"`
+				Status string `json:"status"`
+			}
+			var phases []phaseInfo
+			for _, ps := range s.Phases {
+				child, err := loadPrd(ws, ps)
+				if err != nil {
+					phases = append(phases, phaseInfo{Slug: ps, Status: "missing"})
+					continue
+				}
+				phases = append(phases, phaseInfo{Slug: ps, Name: child.ProjectName, Phase: child.Phase, Status: child.Status})
+			}
+			return h.JSONResult(phases), nil
+		},
 	}
 }
