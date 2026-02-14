@@ -41,9 +41,10 @@ func TestAdvanceTask(t *testing.T) {
 	lcTools := tools.Lifecycle(ws)
 	advance := lcTools[0]
 
-	// Advance from in-progress -> ready-for-testing
+	// Advance from in-progress -> ready-for-testing (gated, needs evidence)
 	res, err := advance.Handler(map[string]any{
 		"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID,
+		"evidence": "go test ./... — 5/5 passed",
 	})
 	if err != nil {
 		t.Fatalf("error: %v", err)
@@ -59,6 +60,26 @@ func TestAdvanceTask(t *testing.T) {
 	if data["to"] != "ready-for-testing" {
 		t.Errorf("to = %v", data["to"])
 	}
+	if data["evidence"] != "go test ./... — 5/5 passed" {
+		t.Errorf("evidence not stored in response")
+	}
+}
+
+func TestAdvanceGateBlocked(t *testing.T) {
+	ws, epicID, storyID, taskID := setupTaskInProgress(t)
+	lcTools := tools.Lifecycle(ws)
+	advance := lcTools[0]
+
+	// Try advancing from in-progress WITHOUT evidence — should be blocked
+	res, _ := advance.Handler(map[string]any{
+		"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID,
+	})
+	if !res.IsError {
+		t.Error("expected gate block when advancing without evidence")
+	}
+	if !strings.Contains(res.Content[0].Text, "GATE BLOCKED") {
+		t.Errorf("error = %s, expected GATE BLOCKED", res.Content[0].Text)
+	}
 }
 
 func TestAdvanceFullChain(t *testing.T) {
@@ -66,21 +87,35 @@ func TestAdvanceFullChain(t *testing.T) {
 	lcTools := tools.Lifecycle(ws)
 	advance := lcTools[0]
 
-	expected := []string{
-		"ready-for-testing", "in-testing", "ready-for-docs",
-		"in-docs", "documented", "in-review", "done",
+	// Gated transitions need evidence; non-gated don't.
+	type step struct {
+		to       string
+		evidence string
 	}
-	for _, want := range expected {
-		res, _ := advance.Handler(map[string]any{
+	steps := []step{
+		{"ready-for-testing", "go test — 5/5 passed"},     // GATE 1: in-progress
+		{"in-testing", ""},                                  // no gate
+		{"ready-for-docs", "coverage 90%, edge cases OK"},  // GATE 2: in-testing
+		{"in-docs", ""},                                     // no gate
+		{"documented", "added godoc to all exported funcs"}, // GATE 3: in-docs
+		{"in-review", ""},                                   // no gate
+		{"done", "reviewed: code quality OK, no issues"},    // GATE 4: in-review
+	}
+	for _, s := range steps {
+		args := map[string]any{
 			"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID,
-		})
+		}
+		if s.evidence != "" {
+			args["evidence"] = s.evidence
+		}
+		res, _ := advance.Handler(args)
 		if res.IsError {
-			t.Fatalf("advance error at %s: %s", want, res.Content[0].Text)
+			t.Fatalf("advance error at %s: %s", s.to, res.Content[0].Text)
 		}
 		var data map[string]any
 		json.Unmarshal([]byte(res.Content[0].Text), &data)
-		if data["to"] != want {
-			t.Errorf("advance to = %v, want %s", data["to"], want)
+		if data["to"] != s.to {
+			t.Errorf("advance to = %v, want %s", data["to"], s.to)
 		}
 	}
 }
@@ -130,11 +165,17 @@ func TestRejectTask(t *testing.T) {
 	advance := lcTools[0]
 	reject := lcTools[1]
 
-	// Advance to in-review (7 advances: in-progress -> ... -> in-review)
-	for range 6 {
-		advance.Handler(map[string]any{
-			"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID,
-		})
+	// Advance to in-review with evidence at gated transitions
+	gatedAdvances := []map[string]any{
+		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID, "evidence": "tests passed"},   // in-progress → ready-for-testing
+		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID},                                // ready-for-testing → in-testing
+		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID, "evidence": "coverage OK"},     // in-testing → ready-for-docs
+		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID},                                // ready-for-docs → in-docs
+		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID, "evidence": "docs written"},    // in-docs → documented
+		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID},                                // documented → in-review
+	}
+	for _, args := range gatedAdvances {
+		advance.Handler(args)
 	}
 
 	// Now reject from in-review

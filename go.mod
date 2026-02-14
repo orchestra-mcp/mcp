@@ -1,9 +1,10 @@
 module github.com/orchestra-mcp/mcp
 
-go 1.24.0
+go 1.24.4
 
 require (
 	github.com/gofiber/fiber/v3 v3.0.0-beta.4
+	github.com/orchestra-mcp/discord v0.0.0
 	github.com/orchestra-mcp/framework v0.0.0
 	github.com/rs/zerolog v1.33.0
 	google.golang.org/grpc v1.79.1
@@ -17,7 +18,8 @@ require (
 	github.com/gofiber/schema v1.2.0 // indirect
 	github.com/gofiber/utils/v2 v2.0.0-beta.7 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/klauspost/compress v1.17.11 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/philhofer/fwd v1.1.3-0.20240916144458-20a13a1f6b7c // indirect
@@ -33,4 +35,7 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 )
 
-replace github.com/orchestra-mcp/framework => ../..
+replace (
+	github.com/orchestra-mcp/discord => ../discord
+	github.com/orchestra-mcp/framework => ../..
+)

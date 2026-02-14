@@ -3,12 +3,18 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
+	"github.com/orchestra-mcp/discord/src/notifier"
+	h "github.com/orchestra-mcp/mcp/src/helpers"
 	"github.com/orchestra-mcp/mcp/src/bootstrap"
 	"github.com/orchestra-mcp/mcp/src/engine"
+	"github.com/orchestra-mcp/mcp/src/toon"
 	"github.com/orchestra-mcp/mcp/src/tools"
 	"github.com/orchestra-mcp/mcp/src/transport"
+	t "github.com/orchestra-mcp/mcp/src/types"
 	"github.com/orchestra-mcp/mcp/src/version"
+	"github.com/orchestra-mcp/mcp/src/workflow"
 )
 
 const cmdInit = "init"
@@ -84,6 +90,15 @@ func main() {
 	s.RegisterTools(tools.Claude(ws))
 	s.RegisterTools(tools.Memory(ws, bridge))
 
+	// Register Discord notifier for workflow transitions
+	if dn := notifier.New(); dn != nil {
+		workflow.RegisterListener(workflow.TransitionListenerFunc(func(e workflow.TransitionEvent) {
+			ne := enrichEvent(ws, e)
+			dn.OnTransition(ne)
+		}))
+		fmt.Fprintf(os.Stderr, "[Orchestra MCP] Discord notifier: enabled\n")
+	}
+
 	memMode := "TOON fallback"
 	if bridge.UsingEngine() {
 		memMode = fmt.Sprintf("Rust engine (gRPC on %s)", mgr.Addr())
@@ -91,6 +106,58 @@ func main() {
 	fmt.Fprintf(os.Stderr, "[Orchestra MCP] Server v%s running with %d tools | Memory: %s\n",
 		version.Version, len(s.GetTools()), memMode)
 	s.Run()
+}
+
+func enrichEvent(ws string, e workflow.TransitionEvent) notifier.TransitionEvent {
+	ne := notifier.TransitionEvent{
+		Project: e.Project, EpicID: e.EpicID, StoryID: e.StoryID,
+		TaskID: e.TaskID, Type: e.Type, From: e.From, To: e.To, Time: e.Time,
+	}
+	projDir := h.ProjectDir(ws, e.Project)
+
+	// Load task title + priority
+	if e.TaskID != "" && e.StoryID != "" && e.EpicID != "" {
+		taskPath := filepath.Join(projDir, "epics", e.EpicID, "stories", e.StoryID, "tasks", e.TaskID+".toon")
+		var task t.IssueData
+		if toon.ParseFile(taskPath, &task) == nil {
+			ne.TaskTitle = task.Title
+			ne.Priority = task.Priority
+		}
+	}
+	// Load story title
+	if e.StoryID != "" && e.EpicID != "" {
+		storyPath := filepath.Join(projDir, "epics", e.EpicID, "stories", e.StoryID, "story.toon")
+		var story t.IssueData
+		if toon.ParseFile(storyPath, &story) == nil {
+			ne.StoryTitle = story.Title
+		}
+	}
+	// Load epic title
+	if e.EpicID != "" {
+		epicPath := filepath.Join(projDir, "epics", e.EpicID, "epic.toon")
+		var epic t.IssueData
+		if toon.ParseFile(epicPath, &epic) == nil {
+			ne.EpicTitle = epic.Title
+		}
+	}
+	// Load project completion stats
+	statusPath := filepath.Join(projDir, "project-status.toon")
+	var ps t.ProjectStatus
+	if toon.ParseFile(statusPath, &ps) == nil {
+		total := len(ps.Tasks)
+		done := 0
+		for _, tk := range ps.Tasks {
+			if tk.Status == "done" {
+				done++
+			}
+		}
+		ne.TotalCount = total
+		ne.DoneCount = done
+		if total > 0 {
+			ne.CompletionPct = fmt.Sprintf("%.1f", float64(done)/float64(total)*100)
+		}
+	}
+	return ne
 }
 
 func printUsage() {
