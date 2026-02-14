@@ -118,9 +118,10 @@ plugins/mcp/
 │   │   ├── client.go               # gRPC client wrapper
 │   │   └── bridge.go               # gRPC/TOON fallback dispatcher
 │   ├── gen/memoryv1/               # Generated protobuf code
-│   ├── tools/                       # 57 tool implementations (12 files)
+│   ├── tools/                       # 57 tool implementations (18 files)
 │   └── bootstrap/
-│       ├── init.go                  # Workspace init command
+│       ├── init.go                  # Workspace init (Run, exports, detect*)
+│       ├── init_install.go          # Install helpers (embed, hooks, .mcp.json)
 │       └── resources/               # go:embed bundled skills, agents, docs
 ├── tests/
 │   └── unit/                        # Unit tests by package

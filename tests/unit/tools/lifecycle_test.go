@@ -93,13 +93,13 @@ func TestAdvanceFullChain(t *testing.T) {
 		evidence string
 	}
 	steps := []step{
-		{"ready-for-testing", "go test — 5/5 passed"},     // GATE 1: in-progress
-		{"in-testing", ""},                                  // no gate
-		{"ready-for-docs", "coverage 90%, edge cases OK"},  // GATE 2: in-testing
-		{"in-docs", ""},                                     // no gate
+		{"ready-for-testing", "go test — 5/5 passed"}, // GATE 1: in-progress
+		{"in-testing", ""}, // no gate
+		{"ready-for-docs", "coverage 90%, edge cases OK"}, // GATE 2: in-testing
+		{"in-docs", ""}, // no gate
 		{"documented", "added godoc to all exported funcs"}, // GATE 3: in-docs
-		{"in-review", ""},                                   // no gate
-		{"done", "reviewed: code quality OK, no issues"},    // GATE 4: in-review
+		{"in-review", ""}, // no gate
+		{"done", "reviewed: code quality OK, no issues"}, // GATE 4: in-review
 	}
 	for _, s := range steps {
 		args := map[string]any{
@@ -167,12 +167,12 @@ func TestRejectTask(t *testing.T) {
 
 	// Advance to in-review with evidence at gated transitions
 	gatedAdvances := []map[string]any{
-		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID, "evidence": "tests passed"},   // in-progress → ready-for-testing
-		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID},                                // ready-for-testing → in-testing
-		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID, "evidence": "coverage OK"},     // in-testing → ready-for-docs
-		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID},                                // ready-for-docs → in-docs
-		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID, "evidence": "docs written"},    // in-docs → documented
-		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID},                                // documented → in-review
+		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID, "evidence": "tests passed"}, // in-progress → ready-for-testing
+		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID},                             // ready-for-testing → in-testing
+		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID, "evidence": "coverage OK"},  // in-testing → ready-for-docs
+		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID},                             // ready-for-docs → in-docs
+		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID, "evidence": "docs written"}, // in-docs → documented
+		{"project": "test-app", "epic_id": epicID, "story_id": storyID, "task_id": taskID},                             // documented → in-review
 	}
 	for _, args := range gatedAdvances {
 		advance.Handler(args)

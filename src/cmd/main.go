@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 
 	"github.com/orchestra-mcp/discord/src/notifier"
-	h "github.com/orchestra-mcp/mcp/src/helpers"
 	"github.com/orchestra-mcp/mcp/src/bootstrap"
 	"github.com/orchestra-mcp/mcp/src/engine"
-	"github.com/orchestra-mcp/mcp/src/toon"
+	h "github.com/orchestra-mcp/mcp/src/helpers"
 	"github.com/orchestra-mcp/mcp/src/tools"
+	"github.com/orchestra-mcp/mcp/src/toon"
 	"github.com/orchestra-mcp/mcp/src/transport"
 	t "github.com/orchestra-mcp/mcp/src/types"
 	"github.com/orchestra-mcp/mcp/src/version"
@@ -89,6 +89,8 @@ func main() {
 	s.RegisterTools(tools.Lifecycle(ws))
 	s.RegisterTools(tools.Claude(ws))
 	s.RegisterTools(tools.Memory(ws, bridge))
+	s.RegisterResources(tools.Resources(ws))
+	s.RegisterPrompts(tools.Prompts(ws))
 
 	// Register Discord notifier for workflow transitions
 	if dn := notifier.New(); dn != nil {
@@ -103,8 +105,8 @@ func main() {
 	if bridge.UsingEngine() {
 		memMode = fmt.Sprintf("Rust engine (gRPC on %s)", mgr.Addr())
 	}
-	fmt.Fprintf(os.Stderr, "[Orchestra MCP] Server v%s running with %d tools | Memory: %s\n",
-		version.Version, len(s.GetTools()), memMode)
+	fmt.Fprintf(os.Stderr, "[Orchestra MCP] Server v%s running with %d tools, %d resources, %d prompts | Memory: %s\n",
+		version.Version, len(s.GetTools()), len(s.GetResources()), len(s.GetPrompts()), memMode)
 	s.Run()
 }
 

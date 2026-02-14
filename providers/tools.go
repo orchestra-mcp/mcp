@@ -81,7 +81,7 @@ func (p *McpPlugin) McpTools() []plugins.McpToolDefinition {
 	return defs
 }
 
-// RegisterRoutes adds REST API endpoints for all MCP tools.
+// RegisterRoutes adds REST API endpoints for all MCP tools, resources, and prompts.
 func (p *McpPlugin) RegisterRoutes(router fiber.Router) {
 	mcp := router.Group("/mcp")
 
@@ -118,6 +118,12 @@ func (p *McpPlugin) RegisterRoutes(router fiber.Router) {
 		}
 		return c.JSON(result)
 	})
+
+	// Register resource and prompt REST routes.
+	p.registerResourcePromptRoutes(mcp)
+
+	// Register SSE transport routes.
+	p.registerSSERoutes(mcp)
 }
 
 func toSchemaMap(schema t.InputSchema) map[string]any {

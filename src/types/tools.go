@@ -5,6 +5,15 @@ type ToolDefinition struct {
 	Name        string      `json:"name"`
 	Description string      `json:"description"`
 	InputSchema InputSchema `json:"inputSchema"`
+	Namespace   string      `json:"-"` // internal only, not serialized
+}
+
+// QualifiedName returns "namespace.name" if namespace is set, else just name.
+func (td ToolDefinition) QualifiedName() string {
+	if td.Namespace != "" {
+		return td.Namespace + "." + td.Name
+	}
+	return td.Name
 }
 
 // InputSchema is the JSON Schema for tool input.

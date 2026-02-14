@@ -10,13 +10,15 @@ import (
 )
 
 // McpPlugin implements the Orchestra plugin interface for the MCP server.
-// Other plugins can push tools via RegisterExternalTools.
+// Other plugins can push tools, resources, and prompts via Register* methods.
 type McpPlugin struct {
-	mu            sync.RWMutex
-	active        bool
-	ctx           *plugins.PluginContext
-	workspace     string
-	externalTools []plugins.McpToolDefinition
+	mu                sync.RWMutex
+	active            bool
+	ctx               *plugins.PluginContext
+	workspace         string
+	externalTools     []plugins.McpToolDefinition
+	externalResources []plugins.McpResourceDefinition
+	externalPrompts   []plugins.McpPromptDefinition
 }
 
 // NewMcpPlugin creates a new MCP plugin instance.
@@ -66,6 +68,38 @@ func (p *McpPlugin) ExternalTools() []plugins.McpToolDefinition {
 	return out
 }
 
+// RegisterExternalResources allows other plugins to push resources into MCP.
+func (p *McpPlugin) RegisterExternalResources(resources []plugins.McpResourceDefinition) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.externalResources = append(p.externalResources, resources...)
+}
+
+// ExternalResources returns a copy of all registered external resources.
+func (p *McpPlugin) ExternalResources() []plugins.McpResourceDefinition {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	out := make([]plugins.McpResourceDefinition, len(p.externalResources))
+	copy(out, p.externalResources)
+	return out
+}
+
+// RegisterExternalPrompts allows other plugins to push prompts into MCP.
+func (p *McpPlugin) RegisterExternalPrompts(prompts []plugins.McpPromptDefinition) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.externalPrompts = append(p.externalPrompts, prompts...)
+}
+
+// ExternalPrompts returns a copy of all registered external prompts.
+func (p *McpPlugin) ExternalPrompts() []plugins.McpPromptDefinition {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	out := make([]plugins.McpPromptDefinition, len(p.externalPrompts))
+	copy(out, p.externalPrompts)
+	return out
+}
+
 func (p *McpPlugin) Commands() []plugins.Command {
 	return []plugins.Command{
 		{Name: "mcp:start", Description: "Start MCP server", Handler: p.cmdStart},
@@ -98,10 +132,12 @@ func (p *McpPlugin) cmdInit(args []string) error {
 
 // Compile-time interface assertions.
 var (
-	_ plugins.Plugin         = (*McpPlugin)(nil)
-	_ plugins.HasConfig      = (*McpPlugin)(nil)
-	_ plugins.HasCommands    = (*McpPlugin)(nil)
-	_ plugins.HasFeatureFlag = (*McpPlugin)(nil)
-	_ plugins.HasMcpTools    = (*McpPlugin)(nil)
-	_ plugins.HasRoutes      = (*McpPlugin)(nil)
+	_ plugins.Plugin          = (*McpPlugin)(nil)
+	_ plugins.HasConfig       = (*McpPlugin)(nil)
+	_ plugins.HasCommands     = (*McpPlugin)(nil)
+	_ plugins.HasFeatureFlag  = (*McpPlugin)(nil)
+	_ plugins.HasMcpTools     = (*McpPlugin)(nil)
+	_ plugins.HasMcpResources = (*McpPlugin)(nil)
+	_ plugins.HasMcpPrompts   = (*McpPlugin)(nil)
+	_ plugins.HasRoutes       = (*McpPlugin)(nil)
 )
